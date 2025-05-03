@@ -21,4 +21,4 @@ pub const CLOCK_FREQ: usize = 12500000;
 pub const MEMORY_END: usize = 0x88000000;
 
 /// the max number of syscalls
-pub const MAX_SYSCALL_NUM: usize = 256;
+pub const MAX_SYSCALL_NUM: usize = 500;
