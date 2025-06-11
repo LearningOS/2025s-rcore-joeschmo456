@@ -14,7 +14,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
+use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
 use lazy_static::*;
@@ -54,7 +54,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
-            syscall_times: [0; MAX_SYSCALL_NUM],
+            syscall_counts: [0; 500],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -136,20 +136,18 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
-    
-    /// Get how many times one syscall has been called
-    fn get_syscall_times(&self, _syscall_id: usize) -> i32 {
-        let inner = self.inner.exclusive_access();
-        let current = inner.current_task;
-        let cnt = inner.tasks[current].syscall_times[_syscall_id];
-        cnt
-    }
-
-    /// Increase the times one syscall has been called
-    fn inc_syscall_times(&self, _syscall_id: usize) {
+    /// Update syscall count for current task
+    fn update_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
-        inner.tasks[current].syscall_times[_syscall_id] += 1;
+        inner.tasks[current].syscall_counts[syscall_id] += 1;
+    }
+
+    /// Get syscall count for current task
+    fn get_syscall_count(&self, syscall_id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_counts[syscall_id]
     }
 }
 
@@ -186,12 +184,12 @@ pub fn exit_current_and_run_next() {
     run_next_task();
 }
 
-/// Get how many times one syscall has been called
-pub fn get_syscall_times(syscall_id: usize) -> i32 {
-    TASK_MANAGER.get_syscall_times(syscall_id)
+/// Get syscall count for current task
+pub fn get_syscall_count(syscall_id: usize) -> usize {
+    TASK_MANAGER.get_syscall_count(syscall_id)
 }
 
-/// Increase the times one syscall has been called
-pub fn inc_syscall_times(syscall_id: usize) {
-    TASK_MANAGER.inc_syscall_times(syscall_id);
+/// Update syscall count for current task
+pub fn update_syscall_count(syscall_id: usize) {
+    TASK_MANAGER.update_syscall_count(syscall_id);
 }
